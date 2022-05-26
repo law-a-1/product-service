@@ -57,6 +57,10 @@ type userResponse struct {
 	Role     string `json:"role"`
 }
 
+type decrementStockRequest struct {
+	Amount int `json:"amount"`
+}
+
 func (s Server) SetupRoutes() {
 	s.router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -171,47 +175,80 @@ func (s Server) SetupRoutes() {
 				}
 			})
 
-			r.With(IsAuthorized, IsAdmin).Put("/{id}", func(w http.ResponseWriter, r *http.Request) {
-				var req productRequest
-				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-					panic(err)
-				}
+			r.Group(func(r chi.Router) {
+				r.Use(IsAuthorized, IsAdmin)
 
-				p, ok := r.Context().Value("product").(*ent.Product)
-				if !ok {
-					w.WriteHeader(http.StatusInternalServerError)
-				}
+				r.Put("/{id}", func(w http.ResponseWriter, r *http.Request) {
+					var req productRequest
+					if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+						panic(err)
+					}
 
-				w.WriteHeader(http.StatusNoContent)
-				_, err := p.Update().
-					SetName(req.Name).
-					SetDescription(req.Description).
-					SetPrice(req.Price).
-					SetStock(req.Stock).
-					SetImage(req.Image).
-					SetVideo(req.Video).
-					SetUpdatedAt(time.Now()).
-					Save(r.Context())
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(err.Error()))
-					return
-				}
-			})
+					p, ok := r.Context().Value("product").(*ent.Product)
+					if !ok {
+						w.WriteHeader(http.StatusInternalServerError)
+					}
 
-			r.With(IsAuthorized, IsAdmin).Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
-				p, ok := r.Context().Value("product").(*ent.Product)
-				if !ok {
-					w.WriteHeader(http.StatusInternalServerError)
-				}
+					w.WriteHeader(http.StatusNoContent)
+					_, err := p.Update().
+						SetName(req.Name).
+						SetDescription(req.Description).
+						SetPrice(req.Price).
+						SetStock(req.Stock).
+						SetImage(req.Image).
+						SetVideo(req.Video).
+						SetUpdatedAt(time.Now()).
+						Save(r.Context())
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						w.Write([]byte(err.Error()))
+						return
+					}
+				})
 
-				err := s.db.Product.
-					DeleteOne(p).
-					Exec(r.Context())
-				if err != nil {
-					panic(err)
-				}
-				w.WriteHeader(http.StatusNoContent)
+				r.Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
+					p, ok := r.Context().Value("product").(*ent.Product)
+					if !ok {
+						w.WriteHeader(http.StatusInternalServerError)
+					}
+
+					err := s.db.Product.
+						DeleteOne(p).
+						Exec(r.Context())
+					if err != nil {
+						panic(err)
+					}
+					w.WriteHeader(http.StatusNoContent)
+				})
+
+				r.Post("/{id}/decrement-stock", func(w http.ResponseWriter, r *http.Request) {
+					p, ok := r.Context().Value("product").(*ent.Product)
+					if !ok {
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+
+					var req decrementStockRequest
+					if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					if p.Stock < req.Amount {
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					w.WriteHeader(http.StatusOK)
+					_, err := p.Update().
+						SetStock(p.Stock - req.Amount).
+						SetUpdatedAt(time.Now()).
+						Save(r.Context())
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+				})
 			})
 		})
 	})
