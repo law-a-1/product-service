@@ -16,32 +16,25 @@ func NewLogger() (*zap.SugaredLogger, error) {
 	return logger.Sugar(), nil
 }
 
-type StructuredLogger struct {
-	Logger *zap.SugaredLogger
+type SugaredRequestLogger struct {
+	Logger  *zap.SugaredLogger
+	request *http.Request
 }
 
-func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
-	l.Logger.With(
-		"ts", time.Now().UTC().Format(time.RFC1123),
-		"method", r.Method,
-		"addr", r.RemoteAddr,
-		"uri", fmt.Sprintf("%s%s", r.Host, r.RequestURI),
-	).Info("request started")
+func (l *SugaredRequestLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
+	l.request = r
 
 	return l
 }
 
-func (l *StructuredLogger) Write(status, bytes int, header http.Header, elapsed time.Duration, extra interface{}) {
-	l.Logger = l.Logger.With(
-		"status", http.StatusText(status),
-		"bytes_length", bytes,
-		"latency", float64(elapsed.Nanoseconds())/1000000.0,
-	)
-
-	l.Logger.Info("request complete")
+func (l *SugaredRequestLogger) Write(status, bytes int, header http.Header, elapsed time.Duration, extra interface{}) {
+	l.Logger.Infof(
+		"%s %s%s - %s %dB in %f",
+		l.request.Method, l.request.Host, l.request.RequestURI, http.StatusText(status), bytes,
+		float64(elapsed.Nanoseconds())/1000000.0)
 }
 
-func (l *StructuredLogger) Panic(v interface{}, stack []byte) {
+func (l *SugaredRequestLogger) Panic(v interface{}, stack []byte) {
 	l.Logger = l.Logger.With(
 		"stack", string(stack),
 		"panic", fmt.Sprintf("%+v", v),

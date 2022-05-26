@@ -15,7 +15,7 @@ func (s Server) SetupMiddlewares() {
 	s.router.Use(middleware.CleanPath)
 	s.router.Use(middleware.AllowContentType("application/json", "application/octet-stream", "multipart/form-data"))
 	s.router.Use(cors.Default().Handler)
-	s.router.Use(middleware.RequestLogger(&StructuredLogger{s.logger}))
+	s.router.Use(middleware.RequestLogger(&SugaredRequestLogger{Logger: s.logger}))
 
 	s.router.Use(middleware.SetHeader("Content-Type", "application/json; charset=utf-8"))
 
