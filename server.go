@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-redis/redis/v8"
 	"github.com/law-a-1/product-service/ent"
 	"github.com/law-a-1/product-service/ent/product"
 	"net/http"
@@ -15,12 +16,14 @@ import (
 type Server struct {
 	router *chi.Mux
 	db     *ent.Client
+	cache  *redis.Client
 }
 
-func NewServer(db *ent.Client) *Server {
+func NewServer(db *ent.Client, rd *redis.Client) *Server {
 	return &Server{
 		router: chi.NewRouter(),
 		db:     db,
+		cache:  rd,
 	}
 }
 

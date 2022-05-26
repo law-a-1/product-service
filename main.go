@@ -7,18 +7,20 @@ import (
 )
 
 func main() {
-	client, err := NewPostgres()
+	pg, err := NewPostgres()
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer client.Close()
+	defer pg.Close()
+
+	rd := NewRedis()
 
 	// Migrate database
-	if err := client.Schema.Create(context.Background()); err != nil {
+	if err := pg.Schema.Create(context.Background()); err != nil {
 		log.Fatalf("failed creating schema resources: %v", err)
 	}
 
-	server := NewServer(client)
+	server := NewServer(pg, rd)
 	server.SetupMiddlewares()
 	server.SetupRoutes()
 
