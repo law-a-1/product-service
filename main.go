@@ -2,29 +2,50 @@ package main
 
 import (
 	"context"
+	"github.com/law-a-1/product-service/ent"
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 	"log"
 )
 
 func main() {
-	pg, err := NewPostgres()
+	logger, err := NewLogger()
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		logger.Fatalf("failed to create logger: %v", err)
 	}
-	defer pg.Close()
+	defer func(logger *zap.SugaredLogger) {
+		err := logger.Sync()
+		if err != nil {
+			logger.Fatalf("failed to sync logger: %v", err)
+		}
+	}(logger)
+	logger.Info("logger created")
 
-	rd := NewRedis()
+	persistent, err := NewPersistent()
+	if err != nil {
+		logger.Fatalf("failed to connect to database: %v", err)
+	}
+	defer func(persistent *ent.Client) {
+		err := persistent.Close()
+		if err != nil {
+			logger.Fatalf("failed to close database: %v", err)
+		}
+	}(persistent)
+	logger.Info("database connected")
 
 	// Migrate database
-	if err := pg.Schema.Create(context.Background()); err != nil {
+	if err := persistent.Schema.Create(context.Background()); err != nil {
 		log.Fatalf("failed creating schema resources: %v", err)
 	}
+	logger.Info("database migrated")
 
-	server := NewServer(pg, rd)
+	cache := NewCache()
+
+	server := NewServer(logger, persistent, cache)
 	server.SetupMiddlewares()
 	server.SetupRoutes()
 
 	if err := server.Start(); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		logger.Fatalf("failed to start server: %v", err)
 	}
 }
