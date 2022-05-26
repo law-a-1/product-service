@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/law-a-1/product-service/ent"
 	"github.com/law-a-1/product-service/ent/product"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -24,13 +22,6 @@ func NewServer(db *ent.Client) *Server {
 		router: chi.NewRouter(),
 		db:     db,
 	}
-}
-
-func (s Server) SetupMiddlewares() {
-	s.router.Use(middleware.Heartbeat("/health"))
-	s.router.Use(middleware.SetHeader("Content-Type", "application/json; charset=utf-8"))
-	s.router.Use(middleware.CleanPath)
-	s.router.Use(middleware.Recoverer)
 }
 
 type productsResponse struct {
@@ -103,7 +94,7 @@ func (s Server) SetupRoutes() {
 			}
 		})
 
-		r.With(isAuthorized, isAdmin).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(IsAuthorized, IsAdmin).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			var req productRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -177,7 +168,7 @@ func (s Server) SetupRoutes() {
 				}
 			})
 
-			r.With(isAuthorized, isAdmin).Put("/{id}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(IsAuthorized, IsAdmin).Put("/{id}", func(w http.ResponseWriter, r *http.Request) {
 				var req productRequest
 				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 					panic(err)
@@ -205,7 +196,7 @@ func (s Server) SetupRoutes() {
 				}
 			})
 
-			r.With(isAuthorized, isAdmin).Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(IsAuthorized, IsAdmin).Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
 				p, ok := r.Context().Value("product").(*ent.Product)
 				if !ok {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -220,68 +211,6 @@ func (s Server) SetupRoutes() {
 				w.WriteHeader(http.StatusNoContent)
 			})
 		})
-	})
-}
-
-func isAuthorized(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqToken := r.Header.Get("Authorization")
-		if reqToken == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		splitToken := strings.Split(reqToken, "Bearer ")
-		if splitToken[0] != "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if splitToken[1] == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		reqToken = splitToken[1]
-
-		req, err := http.NewRequest("GET", "https://auth-law-a1.herokuapp.com/user", nil)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("Authorization", "Bearer "+reqToken)
-
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		var user userResponse
-		if err := json.NewDecoder(res.Body).Decode(&user); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), "user", user)))
-	})
-}
-
-func isAdmin(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u := r.Context().Value("user").(userResponse)
-		// TODO check if user is admin
-		if u.Role != "user" {
-			w.WriteHeader(http.StatusForbidden)
-		}
-		next.ServeHTTP(w, r)
 	})
 }
 
