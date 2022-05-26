@@ -3,16 +3,23 @@ module github.com/law-a-1/product-service
 go 1.18
 
 require (
-	github.com/go-chi/chi/v5 v5.0.7 // indirect
-	github.com/go-playground/locales v0.14.0 // indirect
-	github.com/go-playground/universal-translator v0.18.0 // indirect
-	github.com/go-playground/validator/v10 v10.10.1 // indirect
-	github.com/jmoiron/sqlx v1.3.5 // indirect
-	github.com/leodido/go-urn v1.2.1 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
-	golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069 // indirect
+	entgo.io/ent v0.10.1
+	github.com/go-chi/chi/v5 v5.0.7
+	github.com/lib/pq v1.10.6
+)
+
+require (
+	ariga.io/atlas v0.3.7-0.20220303204946-787354f533c3 // indirect
+	github.com/agext/levenshtein v1.2.1 // indirect
+	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/go-openapi/inflect v0.19.0 // indirect
+	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/uuid v1.3.0 // indirect
+	github.com/hashicorp/hcl/v2 v2.10.0 // indirect
+	github.com/kr/pretty v0.3.0 // indirect
+	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
+	github.com/rogpeppe/go-internal v1.8.0 // indirect
+	github.com/zclconf/go-cty v1.8.0 // indirect
+	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/text v0.3.7 // indirect
 )
