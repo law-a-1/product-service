@@ -7,6 +7,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/law-a-1/product-service/ent"
 	"github.com/law-a-1/product-service/ent/product"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,13 +18,15 @@ type Server struct {
 	router *chi.Mux
 	db     *ent.Client
 	cache  *redis.Client
+	logger *zap.SugaredLogger
 }
 
-func NewServer(db *ent.Client, rd *redis.Client) *Server {
+func NewServer(logger *zap.SugaredLogger, db *ent.Client, rd *redis.Client) *Server {
 	return &Server{
 		router: chi.NewRouter(),
 		db:     db,
 		cache:  rd,
+		logger: logger,
 	}
 }
 

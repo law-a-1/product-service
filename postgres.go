@@ -5,7 +5,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func NewPostgres() (*ent.Client, error) {
+func NewPersistent() (*ent.Client, error) {
 	client, err := ent.Open(
 		"postgres",
 		"host=localhost port=5432 user=postgres dbname=productdb password=root sslmode=disable")
