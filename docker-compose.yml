@@ -17,8 +17,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
     ports:
       - ${DB_PORT:-5432}:5432
-    volumes:
-      - persistent-db:/var/lib/postgresql/data
     restart: unless-stopped
 
   reverse-proxy:
@@ -29,6 +27,3 @@ services:
     depends_on:
       - persistent
       - product-service
-
-volumes:
-  persistent-db:
