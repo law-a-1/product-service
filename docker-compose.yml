@@ -1,23 +1,34 @@
-version: "3.5"
-
 services:
-  postgres:
-    container_name: postgres
-    image: postgres
-    environment:
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
-      POSTGRES_DB: ${DB_NAME:-productdb}
-    ports:
-      - "5432:5432"
-    networks:
-      - postgres
+  product-service:
+    deploy:
+      replicas: 2
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      - persistent
     restart: unless-stopped
 
-networks:
-  postgres:
-    driver: bridge
+  persistent:
+    image: postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-product_service}
+      POSTGRES_USER: ${DB_USER:-law-a-1}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
+    ports:
+      - ${DB_PORT:-5432}:5432
+    volumes:
+      - persistent-db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  reverse-proxy:
+    build: reverse-proxy
+    restart: unless-stopped
+    ports:
+      - 80:80
+    depends_on:
+      - persistent
+      - product-service
 
 volumes:
-  postgres:
-  pgadmin:
+  persistent-db:
