@@ -5,22 +5,24 @@ import (
 	"net"
 	"os"
 
+	"github.com/law-a-1/product-service/ent"
 	"google.golang.org/grpc"
 )
 
 type Server struct {
 	grpcServer *grpc.Server
-}
-
-type server struct {
+	db         *ent.Client
+	logger     *zap.SugaredLogger
 	UnimplementedProductServer
 }
 
-func NewServer() Server {
+func NewServer(logger *zap.SugaredLogger, db *ent.Client) Server {
 	s := grpc.NewServer()
-	RegisterProductServer(s, &server{})
+	RegisterProductServer(s, &Server{})
 	return Server{
 		grpcServer: s,
+		db:         db,
+		logger:     logger,
 	}
 }
 

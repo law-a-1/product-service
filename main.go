@@ -45,7 +45,7 @@ func main() {
 	server.SetupMiddlewares()
 	server.SetupRoutes()
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(logger, persistent)
 
 	go func() {
 		if err := server.Start(); err != nil {
