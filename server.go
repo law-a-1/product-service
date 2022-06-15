@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
 	"github.com/law-a-1/product-service/ent"
@@ -258,11 +263,7 @@ func (s Server) SetupRoutes() {
 }
 
 func (s Server) Start() error {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	if err := http.ListenAndServe(":"+port, s.router); err != nil {
+	if err := http.ListenAndServe(":"+os.Getenv("PORT"), s.router); err != nil {
 		return err
 	}
 	return nil

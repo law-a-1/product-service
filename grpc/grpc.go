@@ -25,7 +25,7 @@ func NewServer() Server {
 }
 
 func (s *Server) Start() error {
-	lis, err := net.Listen("tcp", ":"+os.Getenv("PORT"))
+	lis, err := net.Listen("tcp", ":"+os.Getenv("GRPC_PORT"))
 	if err != nil {
 		return err
 	}
