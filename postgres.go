@@ -1,16 +1,25 @@
 package main
 
 import (
+	"database/sql"
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"fmt"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/law-a-1/product-service/ent"
-	_ "github.com/lib/pq"
+	"time"
 )
 
-func NewPersistent() (*ent.Client, error) {
-	client, err := ent.Open(
-		"postgres",
-		"host=localhost port=5432 user=postgres dbname=productdb password=root sslmode=disable")
+func NewPersistent(host, port, user, password, name string) (*ent.Client, error) {
+	db, err := sql.Open("pgx", fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable", host, port, user, name, password))
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	drv := entsql.OpenDB(dialect.Postgres, db)
+	return ent.NewClient(ent.Driver(drv)), nil
 }
