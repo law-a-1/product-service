@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option go_package = "github.com/law-a-1/product-service/grpc";
+
+service Product {
+    rpc DecreaseStock (DecreaseStockRequest) returns (DecreaseStockResponse);
+    // rpc AddToCart (AddToCartReqest) returns (AddToCartResponse);
+}
+
+message DecreaseStockRequest {
+    int32 amount = 1;
+}
+
+message DecreaseStockResponse {
+    bool success = 1;
+}
+
+// message AddToCartReqest {
+//     int32 id = 1;
+// }
+
+// message AddToCartResponse {
+//     bool success = 1;
+// }
