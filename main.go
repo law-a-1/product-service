@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"github.com/law-a-1/product-service/ent"
+	"github.com/law-a-1/product-service/grpc"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
-	"log"
 )
 
 func main() {
@@ -45,7 +45,15 @@ func main() {
 	server.SetupMiddlewares()
 	server.SetupRoutes()
 
-	if err := server.Start(); err != nil {
-		logger.Fatalf("failed to start server: %v", err)
+	grpcServer := grpc.NewServer()
+
+	go func() {
+		if err := server.Start(); err != nil {
+			logger.Fatalf("failed to start server: %v", err)
+		}
+	}()
+
+	if err := grpcServer.Start(); err != nil {
+		logger.Fatalf("failed to start grpc server: %v", err)
 	}
 }
