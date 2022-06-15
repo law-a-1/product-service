@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rs/cors"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/cors"
 )
 
 func (s Server) SetupMiddlewares() {
