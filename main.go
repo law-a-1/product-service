@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os"
+
 	"github.com/law-a-1/product-service/ent"
 	"github.com/law-a-1/product-service/grpc"
 	_ "github.com/lib/pq"
@@ -21,7 +23,7 @@ func main() {
 	}(logger)
 	logger.Info("logger created")
 
-	persistent, err := NewPersistent()
+	persistent, err := NewPersistent(os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"))
 	if err != nil {
 		logger.Fatalf("failed to connect to database: %v", err)
 	}
@@ -35,13 +37,11 @@ func main() {
 
 	// Migrate database
 	if err := persistent.Schema.Create(context.Background()); err != nil {
-		log.Fatalf("failed creating schema resources: %v", err)
+		logger.Fatalf("failed creating schema resources: %v", err)
 	}
 	logger.Info("database migrated")
 
-	cache := NewCache()
-
-	server := NewServer(logger, persistent, cache)
+	server := NewServer(logger, persistent)
 	server.SetupMiddlewares()
 	server.SetupRoutes()
 
