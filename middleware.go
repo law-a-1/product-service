@@ -90,10 +90,3 @@ func IsAdmin(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-func RequestLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//logger.Info(r.Method, r.URL.Path, r.Proto)
-		next.ServeHTTP(w, r)
-	})
-}
