@@ -22,16 +22,17 @@ type Server struct {
 }
 
 func NewServer(logger *zap.SugaredLogger, db *ent.Client) Server {
-	s := grpc.NewServer()
-	RegisterProductServer(s, &Server{})
-	return Server{
-		grpcServer: s,
+	grpcServer := grpc.NewServer()
+	s := Server{
+		grpcServer: grpcServer,
 		db:         db,
 		logger:     logger,
 	}
+	RegisterProductServer(grpcServer, s)
+	return s
 }
 
-func (s *Server) Start() error {
+func (s Server) Start() error {
 	lis, err := net.Listen("tcp", ":"+os.Getenv("GRPC_PORT"))
 	if err != nil {
 		return err
