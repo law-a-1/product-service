@@ -1,12 +1,13 @@
 services:
-  product-service:
-    deploy:
-      replicas: 2
+  app:
     build: .
     env_file:
       - .env
     depends_on:
       - persistent
+    ports:
+      - ${PORT:-8080}:8080
+      - ${GRPC-PORT:-8081}:8081
     restart: unless-stopped
 
   persistent:
@@ -26,4 +27,4 @@ services:
       - 80:80
     depends_on:
       - persistent
-      - product-service
+      - app
