@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -9,28 +10,21 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-redis/redis/v8"
 	"github.com/law-a-1/product-service/ent"
 	"github.com/law-a-1/product-service/ent/product"
 	"go.uber.org/zap"
-	"net/http"
-	"os"
-	"strconv"
-	"time"
 )
 
 type Server struct {
 	router *chi.Mux
 	db     *ent.Client
-	cache  *redis.Client
 	logger *zap.SugaredLogger
 }
 
-func NewServer(logger *zap.SugaredLogger, db *ent.Client, rd *redis.Client) *Server {
+func NewServer(logger *zap.SugaredLogger, db *ent.Client) *Server {
 	return &Server{
 		router: chi.NewRouter(),
 		db:     db,
-		cache:  rd,
 		logger: logger,
 	}
 }
@@ -65,8 +59,8 @@ type userResponse struct {
 	Role     string `json:"role"`
 }
 
-type decrementStockRequest struct {
-	Amount int `json:"amount"`
+type errorResponse struct {
+	Message string `json:"message"`
 }
 
 func (s Server) SetupRoutes() {
@@ -85,7 +79,8 @@ func (s Server) SetupRoutes() {
 				Query().
 				All(r.Context())
 			if err != nil {
-				panic(err)
+				JSON(w, http.StatusInternalServerError, nil, "failed to get all products")
+				return
 			}
 
 			var productsResponse productsResponse
@@ -103,36 +98,89 @@ func (s Server) SetupRoutes() {
 			}
 			productsResponse.Count = len(productsResponse.Products)
 
-			w.WriteHeader(http.StatusOK)
-			if err := json.NewEncoder(w).Encode(productsResponse); err != nil {
-				panic(err)
-			}
+			JSON(w, http.StatusOK, productsResponse, "All Products fetched")
 		})
 
 		r.With(IsAuthorized, IsAdmin).Post("/", func(w http.ResponseWriter, r *http.Request) {
-			var req productRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(err.Error()))
-				return
+			r.ParseMultipartForm(5120)
+
+			price, err := strconv.Atoi(r.FormValue("price"))
+			if err != nil {
+				panic("invalid price")
 			}
 
-			_, err := s.db.Product.
+			stock, err := strconv.Atoi(r.FormValue("stock"))
+			if err != nil {
+				panic("invalid stock")
+			}
+
+			// image, imageHeader, err := r.FormFile("image")
+			// if err != nil {
+			// 	log.Fatal(err)
+			// 	panic("error image")
+			// }
+			// defer image.Close()
+
+			// video, videoHeader, err := r.FormFile("video")
+			// if err != nil {
+			// 	panic("error video")
+			// }
+			// defer video.Close()
+
+			// Create the uploads folder if it doesn't
+			// already exist
+			// err = os.MkdirAll("./uploads", os.ModePerm)
+			// if err != nil {
+			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+			// 	return
+			// }
+
+			// // Create a new file in the uploads directory
+			// imageDst, err := os.Create(fmt.Sprintf("./uploads/%d%s", time.Now().UnixNano(), filepath.Ext(imageHeader.Filename)))
+			// if err != nil {
+			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+			// 	return
+			// }
+			// defer imageDst.Close()
+
+			// // Copy the uploaded file to the filesystem
+			// // at the specified destination
+			// _, err = io.Copy(imageDst, image)
+			// if err != nil {
+			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+			// 	return
+			// }
+
+			// videoDst, err := os.Create(fmt.Sprintf("./uploads/%d%s", time.Now().UnixNano(), filepath.Ext(videoHeader.Filename)))
+			// if err != nil {
+			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+			// 	return
+			// }
+			// defer videoDst.Close()
+
+			// // Copy the uploaded file to the filesystem
+			// // at the specified destination
+			// _, err = io.Copy(videoDst, video)
+			// if err != nil {
+			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+			// 	return
+			// }
+
+			_, err = s.db.Product.
 				Create().
-				SetName(req.Name).
-				SetDescription(req.Description).
-				SetPrice(req.Price).
-				SetStock(req.Stock).
-				SetImage(req.Image).
-				SetVideo(req.Video).
+				SetName(r.FormValue("name")).
+				SetDescription(r.FormValue("description")).
+				SetPrice(price).
+				SetStock(stock).
+				SetImage("").
+				SetVideo("").
 				Save(r.Context())
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				JSON(w, http.StatusInternalServerError, nil, "failed to create product")
 				return
 			}
 
-			w.WriteHeader(http.StatusCreated)
+			JSON(w, http.StatusCreated, nil, "Product created")
 		})
 
 		r.Group(func(r chi.Router) {
@@ -140,12 +188,14 @@ func (s Server) SetupRoutes() {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					idString := chi.URLParam(r, "id")
 					if idString == "" {
-						w.WriteHeader(http.StatusBadRequest)
+						JSON(w, http.StatusBadRequest, nil, "id cannot be empty")
+						return
 					}
 
 					id, err := strconv.Atoi(idString)
 					if err != nil {
-						w.WriteHeader(http.StatusBadRequest)
+						JSON(w, http.StatusBadRequest, nil, "invalid product id")
+						return
 					}
 
 					p, err := s.db.Product.
@@ -153,7 +203,7 @@ func (s Server) SetupRoutes() {
 						Where(product.ID(id)).
 						Only(r.Context())
 					if err != nil {
-						w.WriteHeader(http.StatusNotFound)
+						JSON(w, http.StatusNotFound, nil, "product not found")
 						return
 					}
 
@@ -165,12 +215,11 @@ func (s Server) SetupRoutes() {
 			r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 				p, ok := r.Context().Value("product").(*ent.Product)
 				if !ok {
-					w.WriteHeader(http.StatusInternalServerError)
+					JSON(w, http.StatusBadRequest, nil, "failed to parse product")
 					return
 				}
 
-				w.WriteHeader(http.StatusOK)
-				if err := json.NewEncoder(w).Encode(productResponse{
+				pr := productResponse{
 					ID:          p.ID,
 					Name:        p.Name,
 					Description: p.Description,
@@ -178,84 +227,65 @@ func (s Server) SetupRoutes() {
 					Stock:       p.Stock,
 					Image:       p.Image,
 					Video:       p.Video,
-				}); err != nil {
-					panic(err)
 				}
+
+				JSON(w, http.StatusOK, pr, "Product fetched")
 			})
 
 			r.Group(func(r chi.Router) {
 				r.Use(IsAuthorized, IsAdmin)
 
 				r.Put("/{id}", func(w http.ResponseWriter, r *http.Request) {
-					var req productRequest
-					if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-						panic(err)
+					r.ParseMultipartForm(5 << 20)
+
+					price, err := strconv.Atoi(r.FormValue("price"))
+					if err != nil {
+						panic("invalid price")
+					}
+
+					stock, err := strconv.Atoi(r.FormValue("stock"))
+					if err != nil {
+						panic("invalid stock")
 					}
 
 					p, ok := r.Context().Value("product").(*ent.Product)
 					if !ok {
-						w.WriteHeader(http.StatusInternalServerError)
+						JSON(w, http.StatusInternalServerError, nil, "failed to parse product")
+						return
 					}
 
-					w.WriteHeader(http.StatusNoContent)
-					_, err := p.Update().
-						SetName(req.Name).
-						SetDescription(req.Description).
-						SetPrice(req.Price).
-						SetStock(req.Stock).
-						SetImage(req.Image).
-						SetVideo(req.Video).
+					_, err = p.Update().
+						SetName(r.FormValue("name")).
+						SetDescription(r.FormValue("description")).
+						SetPrice(price).
+						SetStock(stock).
+						SetImage("").
+						SetVideo("").
 						SetUpdatedAt(time.Now()).
 						Save(r.Context())
 					if err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-						w.Write([]byte(err.Error()))
+						JSON(w, http.StatusInternalServerError, nil, "failed to update product")
 						return
 					}
+					JSON(w, http.StatusNoContent, nil, "Product updated")
 				})
 
 				r.Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
 					p, ok := r.Context().Value("product").(*ent.Product)
 					if !ok {
-						w.WriteHeader(http.StatusInternalServerError)
+						JSON(w, http.StatusInternalServerError, nil, "failed to parse product")
+						return
 					}
 
 					err := s.db.Product.
 						DeleteOne(p).
 						Exec(r.Context())
 					if err != nil {
-						panic(err)
-					}
-					w.WriteHeader(http.StatusNoContent)
-				})
-
-				r.Post("/{id}/decrement-stock", func(w http.ResponseWriter, r *http.Request) {
-					p, ok := r.Context().Value("product").(*ent.Product)
-					if !ok {
-						w.WriteHeader(http.StatusInternalServerError)
+						JSON(w, http.StatusBadRequest, nil, "failed to delete product")
 						return
 					}
 
-					var req decrementStockRequest
-					if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-						w.WriteHeader(http.StatusBadRequest)
-						return
-					}
-
-					if p.Stock < req.Amount {
-						w.WriteHeader(http.StatusBadRequest)
-						return
-					}
-
-					w.WriteHeader(http.StatusOK)
-					_, err := p.Update().
-						SetStock(p.Stock - req.Amount).
-						SetUpdatedAt(time.Now()).
-						Save(r.Context())
-					if err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-						return
-					}
+					JSON(w, http.StatusNoContent, nil, "Product deleted")
 				})
 			})
 		})
@@ -266,5 +296,35 @@ func (s Server) Start() error {
 	if err := http.ListenAndServe(":"+os.Getenv("PORT"), s.router); err != nil {
 		return err
 	}
+	return nil
+}
+
+func JSON(w http.ResponseWriter, status int, v any, message string) error {
+	w.WriteHeader(status)
+	if status < 300 {
+		if err := json.NewEncoder(w).Encode(v); err != nil {
+			return err
+		}
+	} else {
+		if err := json.NewEncoder(w).Encode(errorResponse{
+			Message: message,
+		}); err != nil {
+			return err
+		}
+	}
+
+	logType := "INFO"
+	if status >= 300 {
+		logType = "ERROR"
+	}
+	marshall, _ := json.Marshal(map[string]string{
+		"type":    logType,
+		"service": "products",
+		"message": strconv.Itoa(status) + " - " + message,
+	})
+	req, _ := http.NewRequest("POST", "http://35.225.170.45:2323/logs", bytes.NewReader(marshall))
+	req.Header.Add("Content-Type", "application/json")
+	_, _ = http.DefaultClient.Do(req)
+
 	return nil
 }
