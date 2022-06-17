@@ -72,9 +72,37 @@ func (pu *ProductUpdate) SetImage(s string) *ProductUpdate {
 	return pu
 }
 
+// SetNillableImage sets the "image" field if the given value is not nil.
+func (pu *ProductUpdate) SetNillableImage(s *string) *ProductUpdate {
+	if s != nil {
+		pu.SetImage(*s)
+	}
+	return pu
+}
+
+// ClearImage clears the value of the "image" field.
+func (pu *ProductUpdate) ClearImage() *ProductUpdate {
+	pu.mutation.ClearImage()
+	return pu
+}
+
 // SetVideo sets the "video" field.
 func (pu *ProductUpdate) SetVideo(s string) *ProductUpdate {
 	pu.mutation.SetVideo(s)
+	return pu
+}
+
+// SetNillableVideo sets the "video" field if the given value is not nil.
+func (pu *ProductUpdate) SetNillableVideo(s *string) *ProductUpdate {
+	if s != nil {
+		pu.SetVideo(*s)
+	}
+	return pu
+}
+
+// ClearVideo clears the value of the "video" field.
+func (pu *ProductUpdate) ClearVideo() *ProductUpdate {
+	pu.mutation.ClearVideo()
 	return pu
 }
 
@@ -104,12 +132,18 @@ func (pu *ProductUpdate) Save(ctx context.Context) (int, error) {
 		affected int
 	)
 	if len(pu.hooks) == 0 {
+		if err = pu.check(); err != nil {
+			return 0, err
+		}
 		affected, err = pu.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*ProductMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = pu.check(); err != nil {
+				return 0, err
 			}
 			pu.mutation = mutation
 			affected, err = pu.sqlSave(ctx)
@@ -149,6 +183,31 @@ func (pu *ProductUpdate) ExecX(ctx context.Context) {
 	if err := pu.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (pu *ProductUpdate) check() error {
+	if v, ok := pu.mutation.Name(); ok {
+		if err := product.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Product.name": %w`, err)}
+		}
+	}
+	if v, ok := pu.mutation.Description(); ok {
+		if err := product.DescriptionValidator(v); err != nil {
+			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Product.description": %w`, err)}
+		}
+	}
+	if v, ok := pu.mutation.Price(); ok {
+		if err := product.PriceValidator(v); err != nil {
+			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "Product.price": %w`, err)}
+		}
+	}
+	if v, ok := pu.mutation.Stock(); ok {
+		if err := product.StockValidator(v); err != nil {
+			return &ValidationError{Name: "stock", err: fmt.Errorf(`ent: validator failed for field "Product.stock": %w`, err)}
+		}
+	}
+	return nil
 }
 
 func (pu *ProductUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -218,10 +277,22 @@ func (pu *ProductUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: product.FieldImage,
 		})
 	}
+	if pu.mutation.ImageCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: product.FieldImage,
+		})
+	}
 	if value, ok := pu.mutation.Video(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
+			Column: product.FieldVideo,
+		})
+	}
+	if pu.mutation.VideoCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
 			Column: product.FieldVideo,
 		})
 	}
@@ -295,9 +366,37 @@ func (puo *ProductUpdateOne) SetImage(s string) *ProductUpdateOne {
 	return puo
 }
 
+// SetNillableImage sets the "image" field if the given value is not nil.
+func (puo *ProductUpdateOne) SetNillableImage(s *string) *ProductUpdateOne {
+	if s != nil {
+		puo.SetImage(*s)
+	}
+	return puo
+}
+
+// ClearImage clears the value of the "image" field.
+func (puo *ProductUpdateOne) ClearImage() *ProductUpdateOne {
+	puo.mutation.ClearImage()
+	return puo
+}
+
 // SetVideo sets the "video" field.
 func (puo *ProductUpdateOne) SetVideo(s string) *ProductUpdateOne {
 	puo.mutation.SetVideo(s)
+	return puo
+}
+
+// SetNillableVideo sets the "video" field if the given value is not nil.
+func (puo *ProductUpdateOne) SetNillableVideo(s *string) *ProductUpdateOne {
+	if s != nil {
+		puo.SetVideo(*s)
+	}
+	return puo
+}
+
+// ClearVideo clears the value of the "video" field.
+func (puo *ProductUpdateOne) ClearVideo() *ProductUpdateOne {
+	puo.mutation.ClearVideo()
 	return puo
 }
 
@@ -334,12 +433,18 @@ func (puo *ProductUpdateOne) Save(ctx context.Context) (*Product, error) {
 		node *Product
 	)
 	if len(puo.hooks) == 0 {
+		if err = puo.check(); err != nil {
+			return nil, err
+		}
 		node, err = puo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*ProductMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = puo.check(); err != nil {
+				return nil, err
 			}
 			puo.mutation = mutation
 			node, err = puo.sqlSave(ctx)
@@ -379,6 +484,31 @@ func (puo *ProductUpdateOne) ExecX(ctx context.Context) {
 	if err := puo.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (puo *ProductUpdateOne) check() error {
+	if v, ok := puo.mutation.Name(); ok {
+		if err := product.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Product.name": %w`, err)}
+		}
+	}
+	if v, ok := puo.mutation.Description(); ok {
+		if err := product.DescriptionValidator(v); err != nil {
+			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Product.description": %w`, err)}
+		}
+	}
+	if v, ok := puo.mutation.Price(); ok {
+		if err := product.PriceValidator(v); err != nil {
+			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "Product.price": %w`, err)}
+		}
+	}
+	if v, ok := puo.mutation.Stock(); ok {
+		if err := product.StockValidator(v); err != nil {
+			return &ValidationError{Name: "stock", err: fmt.Errorf(`ent: validator failed for field "Product.stock": %w`, err)}
+		}
+	}
+	return nil
 }
 
 func (puo *ProductUpdateOne) sqlSave(ctx context.Context) (_node *Product, err error) {
@@ -465,10 +595,22 @@ func (puo *ProductUpdateOne) sqlSave(ctx context.Context) (_node *Product, err e
 			Column: product.FieldImage,
 		})
 	}
+	if puo.mutation.ImageCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: product.FieldImage,
+		})
+	}
 	if value, ok := puo.mutation.Video(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
+			Column: product.FieldVideo,
+		})
+	}
+	if puo.mutation.VideoCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
 			Column: product.FieldVideo,
 		})
 	}

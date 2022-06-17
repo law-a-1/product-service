@@ -15,6 +15,22 @@ import (
 func init() {
 	productFields := schema.Product{}.Fields()
 	_ = productFields
+	// productDescName is the schema descriptor for name field.
+	productDescName := productFields[0].Descriptor()
+	// product.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	product.NameValidator = productDescName.Validators[0].(func(string) error)
+	// productDescDescription is the schema descriptor for description field.
+	productDescDescription := productFields[1].Descriptor()
+	// product.DescriptionValidator is a validator for the "description" field. It is called by the builders before save.
+	product.DescriptionValidator = productDescDescription.Validators[0].(func(string) error)
+	// productDescPrice is the schema descriptor for price field.
+	productDescPrice := productFields[2].Descriptor()
+	// product.PriceValidator is a validator for the "price" field. It is called by the builders before save.
+	product.PriceValidator = productDescPrice.Validators[0].(func(int) error)
+	// productDescStock is the schema descriptor for stock field.
+	productDescStock := productFields[3].Descriptor()
+	// product.StockValidator is a validator for the "stock" field. It is called by the builders before save.
+	product.StockValidator = productDescStock.Validators[0].(func(int) error)
 	// productDescCreatedAt is the schema descriptor for created_at field.
 	productDescCreatedAt := productFields[6].Descriptor()
 	// product.DefaultCreatedAt holds the default value on creation for the created_at field.

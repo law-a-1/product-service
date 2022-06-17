@@ -15,8 +15,8 @@ var (
 		{Name: "description", Type: field.TypeString},
 		{Name: "price", Type: field.TypeInt},
 		{Name: "stock", Type: field.TypeInt},
-		{Name: "image", Type: field.TypeString},
-		{Name: "video", Type: field.TypeString},
+		{Name: "image", Type: field.TypeString, Nullable: true},
+		{Name: "video", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}

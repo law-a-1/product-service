@@ -362,9 +362,22 @@ func (m *ProductMutation) OldImage(ctx context.Context) (v string, err error) {
 	return oldValue.Image, nil
 }
 
+// ClearImage clears the value of the "image" field.
+func (m *ProductMutation) ClearImage() {
+	m.image = nil
+	m.clearedFields[product.FieldImage] = struct{}{}
+}
+
+// ImageCleared returns if the "image" field was cleared in this mutation.
+func (m *ProductMutation) ImageCleared() bool {
+	_, ok := m.clearedFields[product.FieldImage]
+	return ok
+}
+
 // ResetImage resets all changes to the "image" field.
 func (m *ProductMutation) ResetImage() {
 	m.image = nil
+	delete(m.clearedFields, product.FieldImage)
 }
 
 // SetVideo sets the "video" field.
@@ -398,9 +411,22 @@ func (m *ProductMutation) OldVideo(ctx context.Context) (v string, err error) {
 	return oldValue.Video, nil
 }
 
+// ClearVideo clears the value of the "video" field.
+func (m *ProductMutation) ClearVideo() {
+	m.video = nil
+	m.clearedFields[product.FieldVideo] = struct{}{}
+}
+
+// VideoCleared returns if the "video" field was cleared in this mutation.
+func (m *ProductMutation) VideoCleared() bool {
+	_, ok := m.clearedFields[product.FieldVideo]
+	return ok
+}
+
 // ResetVideo resets all changes to the "video" field.
 func (m *ProductMutation) ResetVideo() {
 	m.video = nil
+	delete(m.clearedFields, product.FieldVideo)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -689,7 +715,14 @@ func (m *ProductMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ProductMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(product.FieldImage) {
+		fields = append(fields, product.FieldImage)
+	}
+	if m.FieldCleared(product.FieldVideo) {
+		fields = append(fields, product.FieldVideo)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -702,6 +735,14 @@ func (m *ProductMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ProductMutation) ClearField(name string) error {
+	switch name {
+	case product.FieldImage:
+		m.ClearImage()
+		return nil
+	case product.FieldVideo:
+		m.ClearVideo()
+		return nil
+	}
 	return fmt.Errorf("unknown Product nullable field %s", name)
 }
 

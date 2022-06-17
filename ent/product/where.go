@@ -619,6 +619,20 @@ func ImageHasSuffix(v string) predicate.Product {
 	})
 }
 
+// ImageIsNil applies the IsNil predicate on the "image" field.
+func ImageIsNil() predicate.Product {
+	return predicate.Product(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldImage)))
+	})
+}
+
+// ImageNotNil applies the NotNil predicate on the "image" field.
+func ImageNotNil() predicate.Product {
+	return predicate.Product(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldImage)))
+	})
+}
+
 // ImageEqualFold applies the EqualFold predicate on the "image" field.
 func ImageEqualFold(v string) predicate.Product {
 	return predicate.Product(func(s *sql.Selector) {
@@ -727,6 +741,20 @@ func VideoHasPrefix(v string) predicate.Product {
 func VideoHasSuffix(v string) predicate.Product {
 	return predicate.Product(func(s *sql.Selector) {
 		s.Where(sql.HasSuffix(s.C(FieldVideo), v))
+	})
+}
+
+// VideoIsNil applies the IsNil predicate on the "video" field.
+func VideoIsNil() predicate.Product {
+	return predicate.Product(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldVideo)))
+	})
+}
+
+// VideoNotNil applies the NotNil predicate on the "video" field.
+func VideoNotNil() predicate.Product {
+	return predicate.Product(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldVideo)))
 	})
 }
 

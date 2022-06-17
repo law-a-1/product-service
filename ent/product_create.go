@@ -50,9 +50,25 @@ func (pc *ProductCreate) SetImage(s string) *ProductCreate {
 	return pc
 }
 
+// SetNillableImage sets the "image" field if the given value is not nil.
+func (pc *ProductCreate) SetNillableImage(s *string) *ProductCreate {
+	if s != nil {
+		pc.SetImage(*s)
+	}
+	return pc
+}
+
 // SetVideo sets the "video" field.
 func (pc *ProductCreate) SetVideo(s string) *ProductCreate {
 	pc.mutation.SetVideo(s)
+	return pc
+}
+
+// SetNillableVideo sets the "video" field if the given value is not nil.
+func (pc *ProductCreate) SetNillableVideo(s *string) *ProductCreate {
+	if s != nil {
+		pc.SetVideo(*s)
+	}
 	return pc
 }
 
@@ -170,20 +186,34 @@ func (pc *ProductCreate) check() error {
 	if _, ok := pc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Product.name"`)}
 	}
+	if v, ok := pc.mutation.Name(); ok {
+		if err := product.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Product.name": %w`, err)}
+		}
+	}
 	if _, ok := pc.mutation.Description(); !ok {
 		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Product.description"`)}
+	}
+	if v, ok := pc.mutation.Description(); ok {
+		if err := product.DescriptionValidator(v); err != nil {
+			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Product.description": %w`, err)}
+		}
 	}
 	if _, ok := pc.mutation.Price(); !ok {
 		return &ValidationError{Name: "price", err: errors.New(`ent: missing required field "Product.price"`)}
 	}
+	if v, ok := pc.mutation.Price(); ok {
+		if err := product.PriceValidator(v); err != nil {
+			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "Product.price": %w`, err)}
+		}
+	}
 	if _, ok := pc.mutation.Stock(); !ok {
 		return &ValidationError{Name: "stock", err: errors.New(`ent: missing required field "Product.stock"`)}
 	}
-	if _, ok := pc.mutation.Image(); !ok {
-		return &ValidationError{Name: "image", err: errors.New(`ent: missing required field "Product.image"`)}
-	}
-	if _, ok := pc.mutation.Video(); !ok {
-		return &ValidationError{Name: "video", err: errors.New(`ent: missing required field "Product.video"`)}
+	if v, ok := pc.mutation.Stock(); ok {
+		if err := product.StockValidator(v); err != nil {
+			return &ValidationError{Name: "stock", err: fmt.Errorf(`ent: validator failed for field "Product.stock": %w`, err)}
+		}
 	}
 	if _, ok := pc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Product.created_at"`)}

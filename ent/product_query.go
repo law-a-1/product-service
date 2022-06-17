@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 
@@ -264,15 +263,17 @@ func (pq *ProductQuery) Clone() *ProductQuery {
 //		Scan(ctx, &v)
 //
 func (pq *ProductQuery) GroupBy(field string, fields ...string) *ProductGroupBy {
-	group := &ProductGroupBy{config: pq.config}
-	group.fields = append([]string{field}, fields...)
-	group.path = func(ctx context.Context) (prev *sql.Selector, err error) {
+	grbuild := &ProductGroupBy{config: pq.config}
+	grbuild.fields = append([]string{field}, fields...)
+	grbuild.path = func(ctx context.Context) (prev *sql.Selector, err error) {
 		if err := pq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
 		return pq.sqlQuery(ctx), nil
 	}
-	return group
+	grbuild.label = product.Label
+	grbuild.flds, grbuild.scan = &grbuild.fields, grbuild.Scan
+	return grbuild
 }
 
 // Select allows the selection one or more fields/columns for the given query,
@@ -290,7 +291,10 @@ func (pq *ProductQuery) GroupBy(field string, fields ...string) *ProductGroupBy 
 //
 func (pq *ProductQuery) Select(fields ...string) *ProductSelect {
 	pq.fields = append(pq.fields, fields...)
-	return &ProductSelect{ProductQuery: pq}
+	selbuild := &ProductSelect{ProductQuery: pq}
+	selbuild.label = product.Label
+	selbuild.flds, selbuild.scan = &pq.fields, selbuild.Scan
+	return selbuild
 }
 
 func (pq *ProductQuery) prepareQuery(ctx context.Context) error {
@@ -309,22 +313,21 @@ func (pq *ProductQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (pq *ProductQuery) sqlAll(ctx context.Context) ([]*Product, error) {
+func (pq *ProductQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Product, error) {
 	var (
 		nodes = []*Product{}
 		_spec = pq.querySpec()
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
-		node := &Product{config: pq.config}
-		nodes = append(nodes, node)
-		return node.scanValues(columns)
+		return (*Product).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []interface{}) error {
-		if len(nodes) == 0 {
-			return fmt.Errorf("ent: Assign called without calling ScanValues")
-		}
-		node := nodes[len(nodes)-1]
+		node := &Product{config: pq.config}
+		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
+	}
+	for i := range hooks {
+		hooks[i](ctx, _spec)
 	}
 	if err := sqlgraph.QueryNodes(ctx, pq.driver, _spec); err != nil {
 		return nil, err
@@ -435,6 +438,7 @@ func (pq *ProductQuery) sqlQuery(ctx context.Context) *sql.Selector {
 // ProductGroupBy is the group-by builder for Product entities.
 type ProductGroupBy struct {
 	config
+	selector
 	fields []string
 	fns    []AggregateFunc
 	// intermediate query (i.e. traversal path).
@@ -456,209 +460,6 @@ func (pgb *ProductGroupBy) Scan(ctx context.Context, v interface{}) error {
 	}
 	pgb.sql = query
 	return pgb.sqlScan(ctx, v)
-}
-
-// ScanX is like Scan, but panics if an error occurs.
-func (pgb *ProductGroupBy) ScanX(ctx context.Context, v interface{}) {
-	if err := pgb.Scan(ctx, v); err != nil {
-		panic(err)
-	}
-}
-
-// Strings returns list of strings from group-by.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) Strings(ctx context.Context) ([]string, error) {
-	if len(pgb.fields) > 1 {
-		return nil, errors.New("ent: ProductGroupBy.Strings is not achievable when grouping more than 1 field")
-	}
-	var v []string
-	if err := pgb.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// StringsX is like Strings, but panics if an error occurs.
-func (pgb *ProductGroupBy) StringsX(ctx context.Context) []string {
-	v, err := pgb.Strings(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// String returns a single string from a group-by query.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) String(ctx context.Context) (_ string, err error) {
-	var v []string
-	if v, err = pgb.Strings(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductGroupBy.Strings returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// StringX is like String, but panics if an error occurs.
-func (pgb *ProductGroupBy) StringX(ctx context.Context) string {
-	v, err := pgb.String(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Ints returns list of ints from group-by.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) Ints(ctx context.Context) ([]int, error) {
-	if len(pgb.fields) > 1 {
-		return nil, errors.New("ent: ProductGroupBy.Ints is not achievable when grouping more than 1 field")
-	}
-	var v []int
-	if err := pgb.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// IntsX is like Ints, but panics if an error occurs.
-func (pgb *ProductGroupBy) IntsX(ctx context.Context) []int {
-	v, err := pgb.Ints(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Int returns a single int from a group-by query.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) Int(ctx context.Context) (_ int, err error) {
-	var v []int
-	if v, err = pgb.Ints(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductGroupBy.Ints returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// IntX is like Int, but panics if an error occurs.
-func (pgb *ProductGroupBy) IntX(ctx context.Context) int {
-	v, err := pgb.Int(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Float64s returns list of float64s from group-by.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) Float64s(ctx context.Context) ([]float64, error) {
-	if len(pgb.fields) > 1 {
-		return nil, errors.New("ent: ProductGroupBy.Float64s is not achievable when grouping more than 1 field")
-	}
-	var v []float64
-	if err := pgb.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// Float64sX is like Float64s, but panics if an error occurs.
-func (pgb *ProductGroupBy) Float64sX(ctx context.Context) []float64 {
-	v, err := pgb.Float64s(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Float64 returns a single float64 from a group-by query.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) Float64(ctx context.Context) (_ float64, err error) {
-	var v []float64
-	if v, err = pgb.Float64s(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductGroupBy.Float64s returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// Float64X is like Float64, but panics if an error occurs.
-func (pgb *ProductGroupBy) Float64X(ctx context.Context) float64 {
-	v, err := pgb.Float64(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Bools returns list of bools from group-by.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) Bools(ctx context.Context) ([]bool, error) {
-	if len(pgb.fields) > 1 {
-		return nil, errors.New("ent: ProductGroupBy.Bools is not achievable when grouping more than 1 field")
-	}
-	var v []bool
-	if err := pgb.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// BoolsX is like Bools, but panics if an error occurs.
-func (pgb *ProductGroupBy) BoolsX(ctx context.Context) []bool {
-	v, err := pgb.Bools(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Bool returns a single bool from a group-by query.
-// It is only allowed when executing a group-by query with one field.
-func (pgb *ProductGroupBy) Bool(ctx context.Context) (_ bool, err error) {
-	var v []bool
-	if v, err = pgb.Bools(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductGroupBy.Bools returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// BoolX is like Bool, but panics if an error occurs.
-func (pgb *ProductGroupBy) BoolX(ctx context.Context) bool {
-	v, err := pgb.Bool(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
 
 func (pgb *ProductGroupBy) sqlScan(ctx context.Context, v interface{}) error {
@@ -702,6 +503,7 @@ func (pgb *ProductGroupBy) sqlQuery() *sql.Selector {
 // ProductSelect is the builder for selecting fields of Product entities.
 type ProductSelect struct {
 	*ProductQuery
+	selector
 	// intermediate query (i.e. traversal path).
 	sql *sql.Selector
 }
@@ -713,201 +515,6 @@ func (ps *ProductSelect) Scan(ctx context.Context, v interface{}) error {
 	}
 	ps.sql = ps.ProductQuery.sqlQuery(ctx)
 	return ps.sqlScan(ctx, v)
-}
-
-// ScanX is like Scan, but panics if an error occurs.
-func (ps *ProductSelect) ScanX(ctx context.Context, v interface{}) {
-	if err := ps.Scan(ctx, v); err != nil {
-		panic(err)
-	}
-}
-
-// Strings returns list of strings from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) Strings(ctx context.Context) ([]string, error) {
-	if len(ps.fields) > 1 {
-		return nil, errors.New("ent: ProductSelect.Strings is not achievable when selecting more than 1 field")
-	}
-	var v []string
-	if err := ps.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// StringsX is like Strings, but panics if an error occurs.
-func (ps *ProductSelect) StringsX(ctx context.Context) []string {
-	v, err := ps.Strings(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// String returns a single string from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) String(ctx context.Context) (_ string, err error) {
-	var v []string
-	if v, err = ps.Strings(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductSelect.Strings returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// StringX is like String, but panics if an error occurs.
-func (ps *ProductSelect) StringX(ctx context.Context) string {
-	v, err := ps.String(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Ints returns list of ints from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) Ints(ctx context.Context) ([]int, error) {
-	if len(ps.fields) > 1 {
-		return nil, errors.New("ent: ProductSelect.Ints is not achievable when selecting more than 1 field")
-	}
-	var v []int
-	if err := ps.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// IntsX is like Ints, but panics if an error occurs.
-func (ps *ProductSelect) IntsX(ctx context.Context) []int {
-	v, err := ps.Ints(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Int returns a single int from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) Int(ctx context.Context) (_ int, err error) {
-	var v []int
-	if v, err = ps.Ints(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductSelect.Ints returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// IntX is like Int, but panics if an error occurs.
-func (ps *ProductSelect) IntX(ctx context.Context) int {
-	v, err := ps.Int(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Float64s returns list of float64s from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) Float64s(ctx context.Context) ([]float64, error) {
-	if len(ps.fields) > 1 {
-		return nil, errors.New("ent: ProductSelect.Float64s is not achievable when selecting more than 1 field")
-	}
-	var v []float64
-	if err := ps.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// Float64sX is like Float64s, but panics if an error occurs.
-func (ps *ProductSelect) Float64sX(ctx context.Context) []float64 {
-	v, err := ps.Float64s(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Float64 returns a single float64 from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) Float64(ctx context.Context) (_ float64, err error) {
-	var v []float64
-	if v, err = ps.Float64s(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductSelect.Float64s returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// Float64X is like Float64, but panics if an error occurs.
-func (ps *ProductSelect) Float64X(ctx context.Context) float64 {
-	v, err := ps.Float64(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Bools returns list of bools from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) Bools(ctx context.Context) ([]bool, error) {
-	if len(ps.fields) > 1 {
-		return nil, errors.New("ent: ProductSelect.Bools is not achievable when selecting more than 1 field")
-	}
-	var v []bool
-	if err := ps.Scan(ctx, &v); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// BoolsX is like Bools, but panics if an error occurs.
-func (ps *ProductSelect) BoolsX(ctx context.Context) []bool {
-	v, err := ps.Bools(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
-// Bool returns a single bool from a selector. It is only allowed when selecting one field.
-func (ps *ProductSelect) Bool(ctx context.Context) (_ bool, err error) {
-	var v []bool
-	if v, err = ps.Bools(ctx); err != nil {
-		return
-	}
-	switch len(v) {
-	case 1:
-		return v[0], nil
-	case 0:
-		err = &NotFoundError{product.Label}
-	default:
-		err = fmt.Errorf("ent: ProductSelect.Bools returned %d results when one was expected", len(v))
-	}
-	return
-}
-
-// BoolX is like Bool, but panics if an error occurs.
-func (ps *ProductSelect) BoolX(ctx context.Context) bool {
-	v, err := ps.Bool(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
 
 func (ps *ProductSelect) sqlScan(ctx context.Context, v interface{}) error {

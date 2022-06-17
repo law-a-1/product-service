@@ -14,12 +14,12 @@ type Product struct {
 // Fields of the Product.
 func (Product) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("name").Unique(),
-		field.String("description"),
-		field.Int("price"),
-		field.Int("stock"),
-		field.String("image"),
-		field.String("video"),
+		field.String("name").NotEmpty().Unique(),
+		field.String("description").NotEmpty(),
+		field.Int("price").Min(999), // Price must be > Rp999
+		field.Int("stock").Min(-1),  // Stock must be > -1
+		field.String("image").Optional(),
+		field.String("video").Optional(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now),
 	}
