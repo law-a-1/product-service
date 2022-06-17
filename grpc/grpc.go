@@ -43,28 +43,24 @@ func (s Server) Start() error {
 	return nil
 }
 
-func (s *Server) DecreaseStock(ctx context.Context, in *DecreaseStockRequest) (*DecreaseStockResponse, error) {
+func (s Server) DecreaseStock(ctx context.Context, in *DecreaseStockRequest) (*DecreaseStockResponse, error) {
 	p, err := s.db.Product.Query().Where(product.ID(int(in.ID))).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			s.logger.Fatalf("Product not found")
-			st := status.New(codes.NotFound, "Product with given ID not found.")
-			return &DecreaseStockResponse{}, st.Err()
+			s.logger.Warnf("product with given ID not found")
+			return &DecreaseStockResponse{}, status.Errorf(codes.NotFound, "product with given ID not found")
 		}
-		s.logger.Fatalf("")
-		st := status.New(codes.Internal, "Failed to find product with given ID.")
-		return &DecreaseStockResponse{}, st.Err()
+		s.logger.Warnf("failed to find product with given ID")
+		return &DecreaseStockResponse{}, status.Errorf(codes.Internal, "failed to find product with given ID")
 	}
 	if p.Stock < int(in.Amount) {
-		s.logger.Fatalf("")
-		st := status.New(codes.InvalidArgument, "Stock is not enough.")
-		return &DecreaseStockResponse{}, st.Err()
+		s.logger.Warnf("stock is not enough")
+		return &DecreaseStockResponse{}, status.Errorf(codes.InvalidArgument, "stock is not enough")
 	}
 	_, err = s.db.Product.Update().SetStock(int(in.Amount)).Save(ctx)
 	if err != nil {
-		s.logger.Fatalf("")
-		st := status.New(codes.Internal, "Failed to update stock data.")
-		return &DecreaseStockResponse{}, st.Err()
+		s.logger.Warnf("failed to update stock data ")
+		return &DecreaseStockResponse{}, status.Errorf(codes.Internal, "failed to update stock data")
 	}
 
 	return &DecreaseStockResponse{}, nil
