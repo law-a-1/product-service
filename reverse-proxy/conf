@@ -10,6 +10,7 @@ upstream product_service_grpc {
 
 server {
     listen                          80;
+    listen                          50051 http2;
 
     location /products {
         proxy_set_header            Host $host;

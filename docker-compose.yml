@@ -1,13 +1,15 @@
 services:
   app:
     build: .
+    deploy:
+      replicas: 5
     env_file:
       - .env
     depends_on:
       - persistent
     ports:
-      - ${PORT:-8080}:8080
-      - ${GRPC-PORT:-50051}:50051
+      - ${PORT:-8080}
+      - ${GRPC-PORT:-50051}
     restart: unless-stopped
 
   persistent:
@@ -25,6 +27,7 @@ services:
     restart: unless-stopped
     ports:
       - 80:80
+      - 50051:50051
     depends_on:
       - persistent
       - app
