@@ -322,7 +322,7 @@ func JSON(w http.ResponseWriter, status int, v any, message string) error {
 		"service": "products",
 		"message": strconv.Itoa(status) + " - " + message,
 	})
-	req, _ := http.NewRequest("POST", "http://35.225.170.45:2323/logs", bytes.NewReader(marshall))
+	req, _ := http.NewRequest("POST", os.Getenv("LOG_SERVICE_URL"), bytes.NewReader(marshall))
 	req.Header.Add("Content-Type", "application/json")
 	_, _ = http.DefaultClient.Do(req)
 
