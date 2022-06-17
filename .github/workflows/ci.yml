@@ -22,6 +22,7 @@ jobs:
             --deadline=10m 
             --tests=false
             --exclude="SA1029: *"
+            --exclude=errcheck
 
   test:
     runs-on: ubuntu-latest
