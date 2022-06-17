@@ -51,9 +51,11 @@ func main() {
 		if err := server.Start(); err != nil {
 			logger.Fatalf("failed to start server: %v", err)
 		}
+		logger.Info("http server started")
 	}()
 
 	if err := grpcServer.Start(); err != nil {
 		logger.Fatalf("failed to start grpc server: %v", err)
 	}
+	logger.Info("grpc server started")
 }
