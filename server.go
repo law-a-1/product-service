@@ -44,14 +44,14 @@ type productResponse struct {
 	Video       string `json:"video"`
 }
 
-type productRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Price       int    `json:"price"`
-	Stock       int    `json:"stock"`
-	Image       string `json:"image,omitempty"`
-	Video       string `json:"video,omitempty"`
-}
+//type productRequest struct {
+//	Name        string `json:"name"`
+//	Description string `json:"description"`
+//	Price       int    `json:"price"`
+//	Stock       int    `json:"stock"`
+//	Image       string `json:"image,omitempty"`
+//	Video       string `json:"video,omitempty"`
+//}
 
 type userResponse struct {
 	Username string `json:"username"`
