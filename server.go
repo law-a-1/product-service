@@ -21,8 +21,8 @@ type Server struct {
 	logger *zap.SugaredLogger
 }
 
-func NewServer(logger *zap.SugaredLogger, db *ent.Client) *Server {
-	return &Server{
+func NewServer(logger *zap.SugaredLogger, db *ent.Client) Server {
+	return Server{
 		router: chi.NewRouter(),
 		db:     db,
 		logger: logger,

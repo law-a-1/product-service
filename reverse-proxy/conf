@@ -1,20 +1,32 @@
 proxy_cache_path                    /var/cache/nginx levels=1:2 keys_zone=products_cache:100m inactive=60m;
 
-upstream product-service {
-    server product-service:8080;
+upstream product_service {
+    server app:8080;
+}
+
+upstream product_service_grpc {
+    server app:50051;
 }
 
 server {
     listen                          80;
 
     location /products {
-        proxy_pass                  http://product-service/products/;
+        proxy_set_header            Host $host;
+        proxy_set_header            X-Real-IP $remote_addr;
+        proxy_pass                  http://product_service/products/;
         proxy_cache                 products_cache;
-        proxy_cache_valid           any 10m;
+        proxy_cache_valid           any 60m;
         add_header                  X-Proxy-Cache $upstream_cache_status;
     }
 
     location ~ ^/products/([0-9]+)$ {
-        proxy_pass                  http:///product-service/products/$1;
+        proxy_set_header            Host $host;
+        proxy_set_header            X-Real-IP $remote_addr;
+        proxy_pass                  http://product_service/products/$1;
+    }
+
+    location /Product {
+        grpc_pass                   grpc://product_service_grpc;
     }
 }
