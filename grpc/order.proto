@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "github.com/law-a-1/product-service/grpc";
+
+service Order {
+  rpc AddOrder (AddOrderRequest) returns (AddOrderResponse);
+}
+
+message AddOrderRequest {
+  int32 ID = 1;
+  string name = 2;
+  int32 price = 3;
+  int32 stock = 4;
+  string image = 5;
+}
+
+message AddOrderResponse {}
