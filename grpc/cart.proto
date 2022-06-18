@@ -2,11 +2,11 @@ syntax = "proto3";
 
 option go_package = "github.com/law-a-1/product-service/grpc";
 
-service Order {
-  rpc AddOrder (AddOrderRequest) returns (AddOrderResponse);
+service Cart {
+  rpc AddToCart (AddToCartRequest) returns (AddToCartResponse);
 }
 
-message AddOrderRequest {
+message AddToCartRequest {
   int32 ID = 1;
   string name = 2;
   int32 price = 3;
@@ -14,4 +14,4 @@ message AddOrderRequest {
   string image = 5;
 }
 
-message AddOrderResponse {}
+message AddToCartResponse {}
