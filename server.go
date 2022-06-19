@@ -4,15 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"net/http"
-	"os"
-	"strconv"
-	"time"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/law-a-1/product-service/ent"
 	"github.com/law-a-1/product-service/ent/product"
 	"go.uber.org/zap"
+	"net/http"
+	"os"
+	"strconv"
 )
 
 type Server struct {
@@ -43,15 +41,6 @@ type productResponse struct {
 	Image       string `json:"image"`
 	Video       string `json:"video"`
 }
-
-//type productRequest struct {
-//	Name        string `json:"name"`
-//	Description string `json:"description"`
-//	Price       int    `json:"price"`
-//	Stock       int    `json:"stock"`
-//	Image       string `json:"image,omitempty"`
-//	Video       string `json:"video,omitempty"`
-//}
 
 type userResponse struct {
 	Username string `json:"username"`
@@ -102,17 +91,25 @@ func (s Server) SetupRoutes() {
 		})
 
 		r.With(IsAuthorized, IsAdmin).Post("/", func(w http.ResponseWriter, r *http.Request) {
-			r.ParseMultipartForm(5120)
+			if err := r.ParseMultipartForm(5 << 20); err != nil {
+				JSON(w, http.StatusBadRequest, nil, "failed to parse multipart form")
+				return
+			}
 
 			price, err := strconv.Atoi(r.FormValue("price"))
 			if err != nil {
-				panic("invalid price")
+				JSON(w, http.StatusBadRequest, nil, "failed to parse price value")
+				return
 			}
 
 			stock, err := strconv.Atoi(r.FormValue("stock"))
 			if err != nil {
-				panic("invalid stock")
+				JSON(w, http.StatusBadRequest, nil, "failed to parse stock value")
+				return
 			}
+
+			var image string
+			var video string
 
 			// image, imageHeader, err := r.FormFile("image")
 			// if err != nil {
@@ -127,16 +124,16 @@ func (s Server) SetupRoutes() {
 			// }
 			// defer video.Close()
 
-			// Create the uploads folder if it doesn't
+			// Create the assets folder if it doesn't
 			// already exist
-			// err = os.MkdirAll("./uploads", os.ModePerm)
+			// err = os.MkdirAll("./assets", os.ModePerm)
 			// if err != nil {
 			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
 			// 	return
 			// }
 
-			// // Create a new file in the uploads directory
-			// imageDst, err := os.Create(fmt.Sprintf("./uploads/%d%s", time.Now().UnixNano(), filepath.Ext(imageHeader.Filename)))
+			// // Create a new file in the assets directory
+			// imageDst, err := os.Create(fmt.Sprintf("./assets/%d%s", time.Now().UnixNano(), filepath.Ext(imageHeader.Filename)))
 			// if err != nil {
 			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
 			// 	return
@@ -151,7 +148,7 @@ func (s Server) SetupRoutes() {
 			// 	return
 			// }
 
-			// videoDst, err := os.Create(fmt.Sprintf("./uploads/%d%s", time.Now().UnixNano(), filepath.Ext(videoHeader.Filename)))
+			// videoDst, err := os.Create(fmt.Sprintf("./assets/%d%s", time.Now().UnixNano(), filepath.Ext(videoHeader.Filename)))
 			// if err != nil {
 			// 	http.Error(w, err.Error(), http.StatusInternalServerError)
 			// 	return
@@ -166,21 +163,29 @@ func (s Server) SetupRoutes() {
 			// 	return
 			// }
 
-			_, err = s.db.Product.
+			p := s.db.Product.
 				Create().
 				SetName(r.FormValue("name")).
 				SetDescription(r.FormValue("description")).
 				SetPrice(price).
-				SetStock(stock).
-				SetImage("").
-				SetVideo("").
-				Save(r.Context())
-			if err != nil {
+				SetStock(stock)
+			if image != "" {
+				p.SetImage(image)
+			}
+			if video != "" {
+				p.SetVideo(video)
+			}
+
+			if _, err = p.Save(r.Context()); err != nil {
+				if ent.IsConstraintError(err) {
+					JSON(w, http.StatusConflict, nil, "product with the same name exist")
+					return
+				}
 				JSON(w, http.StatusInternalServerError, nil, "failed to create product")
 				return
 			}
 
-			JSON(w, http.StatusCreated, nil, "Product created")
+			JSON(w, http.StatusCreated, nil, "product created")
 		})
 
 		r.Group(func(r chi.Router) {
@@ -236,17 +241,25 @@ func (s Server) SetupRoutes() {
 				r.Use(IsAuthorized, IsAdmin)
 
 				r.Put("/{id}", func(w http.ResponseWriter, r *http.Request) {
-					r.ParseMultipartForm(5 << 20)
+					if err := r.ParseMultipartForm(5 << 20); err != nil {
+						JSON(w, http.StatusBadRequest, nil, "failed to parse multipart form")
+						return
+					}
 
 					price, err := strconv.Atoi(r.FormValue("price"))
 					if err != nil {
-						panic("invalid price")
+						JSON(w, http.StatusBadRequest, nil, "failed to parse price value")
+						return
 					}
 
 					stock, err := strconv.Atoi(r.FormValue("stock"))
 					if err != nil {
-						panic("invalid stock")
+						JSON(w, http.StatusBadRequest, nil, "failed to parse stock value")
+						return
 					}
+
+					var image string
+					var video string
 
 					p, ok := r.Context().Value("product").(*ent.Product)
 					if !ok {
@@ -254,20 +267,25 @@ func (s Server) SetupRoutes() {
 						return
 					}
 
-					_, err = p.Update().
+					upd := p.
+						Update().
 						SetName(r.FormValue("name")).
 						SetDescription(r.FormValue("description")).
 						SetPrice(price).
-						SetStock(stock).
-						SetImage("").
-						SetVideo("").
-						SetUpdatedAt(time.Now()).
-						Save(r.Context())
-					if err != nil {
+						SetStock(stock)
+					if image != "" {
+						upd.SetImage(image)
+					}
+					if video != "" {
+						upd.SetVideo(video)
+					}
+
+					if _, err = upd.Save(r.Context()); err != nil {
 						JSON(w, http.StatusInternalServerError, nil, "failed to update product")
 						return
 					}
-					JSON(w, http.StatusNoContent, nil, "Product updated")
+
+					JSON(w, http.StatusNoContent, nil, "product updated")
 				})
 
 				r.Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {

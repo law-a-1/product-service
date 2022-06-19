@@ -8,14 +8,12 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rs/cors"
 )
 
 func (s Server) SetupMiddlewares() {
 	s.router.Use(middleware.Heartbeat("/health"))
 	s.router.Use(middleware.CleanPath)
-	s.router.Use(middleware.AllowContentType("application/json", "application/octet-stream", "multipart/form-data"))
-	s.router.Use(cors.Default().Handler)
+	s.router.Use(middleware.AllowContentType("application/json", "multipart/form-data"))
 	s.router.Use(middleware.RequestLogger(&SugaredRequestLogger{Logger: s.logger}))
 
 	s.router.Use(middleware.SetHeader("Content-Type", "application/json; charset=utf-8"))

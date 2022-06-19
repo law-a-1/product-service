@@ -1,4 +1,4 @@
-proxy_cache_path                    /var/cache/nginx levels=1:2 keys_zone=products_cache:100m inactive=60m;
+proxy_cache_path                    /var/cache/nginx levels=1:2 keys_zone=product_cache:100m inactive=60m;
 
 upstream product_service {
     server app:8080;
@@ -16,15 +16,59 @@ server {
         proxy_set_header            Host $host;
         proxy_set_header            X-Real-IP $remote_addr;
         proxy_pass                  http://product_service/products/;
-        proxy_cache                 products_cache;
-        proxy_cache_valid           any 60m;
-        add_header                  X-Proxy-Cache $upstream_cache_status;
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Authorization, DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'Authorization, DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+            add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain; charset=utf-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+#         add_header                  'Access-Control-Allow-Origin' '*' always;
+#         add_header                  'Access-Control-Allow-Credentials' 'true' always;
+#         add_header                  'Access-Control-Allow-Methods' 'GET,POST,OPTIONS,PUT,DELETE' always;
+#         add_header                  'Access-Control-Allow-Headers' 'Authorization,Accept,Origin,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range' always;
     }
 
     location ~ ^/products/([0-9]+)$ {
         proxy_set_header            Host $host;
         proxy_set_header            X-Real-IP $remote_addr;
+        proxy_cache                 product_cache;
+        proxy_cache_valid           any 60m;
         proxy_pass                  http://product_service/products/$1;
+        add_header                  X-Proxy-Cache $upstream_cache_status;
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'Authorization, DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+            add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain; charset=utf-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Authorization, DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+#         add_header                  'Access-Control-Allow-Origin' '*' always;
+#         add_header                  'Access-Control-Allow-Credentials' 'true' always;
+#         add_header                  'Access-Control-Allow-Methods' 'GET,POST,OPTIONS,PUT,DELETE' always;
+#         add_header                  'Access-Control-Allow-Headers' 'Authorization,Accept,Origin,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range' always;
+    }
+
+    location /images/([0-9]+)$ {
+        root /www/images;
+    }
+
+    location /videos/([0-9]+)$ {
+        root /www/videos;
     }
 
     location /Product {
